@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>เช็กอินถึงบ้าน - โรงเรียน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <style>
+    body, html {
+      font-family: 'Noto Sans Thai', system-ui, Arial, sans-serif;
+      height: 100%; margin: 0; overflow-x: hidden;
+    }
+    .container-split { display: flex; min-height: 100vh; }
+    .image-side {
+      flex: 1;
+      background-image: url('12.jpeg');
+      background-size: cover; background-position: center; display: none;
+    }
+    .form-side {
+      flex: 1; display: flex; justify-content: center;
+      align-items: center; padding: 2rem; background-color: #ffffff;
+    }
+    .form-container {
+      max-width: 450px; width: 100%;
+      animation: fadeIn 0.8s ease-out;
+    }
+    @media (min-width: 992px) {
+      .image-side { display: block; }
+      .form-side { padding: 3rem; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .logo {
+      font-size: 1.75rem; font-weight: 700;
+      color: #0d6efd; margin-bottom: 0.5rem;
+    }
+    #clock {
+      font-size: 1rem; font-weight: 500;
+      color: #6c757d; margin-bottom: 1.5rem;
+    }
+    #qr-reader {
+      width: 100%; border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    /* CSS สำหรับไอคอนเคลื่อนไหว */
+    .announcement-icon {
+      display: inline-block;
+      font-size: 1.3rem;
+      margin-right: 10px;
+      animation: icon-pulse 1.5s infinite;
+    }
+    @keyframes icon-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.25) rotate(5deg); }
+      100% { transform: scale(1); }
+    }
+    
+  </style>
+</head>
+
+<body>
+  
+  <div class="container-split">
+    
+    <div class="image-side"></div>
+    
+    <div class="form-side">
+      <div class="form-container">
+        
+        <div class="logo">
+          🏫 School Check-in
+        </div>
+        
+        <div id="clock">กำลังโหลดเวลา...</div>
+        
+        <div id="announcement-container"></div>
+        
+        <h2 class="h4 mb-3 fw-normal">บันทึกเวลาถึงบ้าน</h2>
+        <p class="text-muted mb-4">กรอกรหัสนักเรียน หรือใช้ปุ่มสแกน QR Code</p>
+
+        <div class="mb-3">
+          <label for="studentIdInput" class="form-label">รหัสนักเรียน</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+            <input type="text" class="form-control form-control-lg" id="studentIdInput" placeholder="S12345">
+          </div>
+        </div>
+        
+        <button id="scanBtn" class="btn btn-outline-secondary w-100 mb-3">
+          <i class="bi bi-qr-code-scan"></i> สแกน QR Code
+        </button>
+
+        <div id="studentInfo" class="mt-3"></div>
+
+        <button id="checkinBtn" class="btn btn-primary btn-lg w-100 mt-3">
+          <i class="bi bi-check-circle"></i> ยืนยันการเช็กอิน
+        </button>
+        
+        <div id="message" class="mt-4"></div>
+      
+      </div>
+    </div>
+  </div>
+  
+  
+  <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="scannerModalLabel">สแกน QR Code</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-center">หันกล้องไปที่ QR Code ของนักเรียน</p>
+          <div id="qr-reader"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // --- Firebase Config ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyAx1Yguy0qBSwdqJMrILWQfXS9C3WnAtKE",
+    authDomain: "school-checkin-72e99.firebaseapp.com",
+    projectId: "school-checkin-72e99",
+    storageBucket: "school-checkin-72e99.firebasestorage.app",
+    messagingSenderId: "608270281540",
+    appId: "1:608270281540:web:312f73d73d111c43de8511",
+    measurementId: "G-2DQ7YVBQWZ"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // --- Elements ---
+  const input = document.getElementById("studentIdInput");
+  const infoDiv = document.getElementById("studentInfo");
+  const msg = document.getElementById("message");
+  const checkinBtn = document.getElementById("checkinBtn");
+  const clockDiv = document.getElementById("clock");
+  const announcementContainer = document.getElementById("announcement-container");
+  const scanBtn = document.getElementById("scanBtn");
+  const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
+
+  let currentStudent = null;
+  
+  // --- ฟังก์ชันนาฬิกา Real-time ---
+  function updateClock() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    clockDiv.innerText = now.toLocaleString('th-TH', options);
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+  
+  // --- ฟังก์ชันโหลดประกาศ (แสดงหลายอัน + Icon เคลื่อนไหว) ---
+  async function loadAnnouncements() {
+    try {
+      const snap = await db.collection("announcements")
+                            .orderBy("timestamp", "desc")
+                            .limit(3) // แสดง 3 อันล่าสุด
+                            .get();
+      
+      announcementContainer.innerHTML = '';
+      
+      snap.forEach(doc => {
+        const data = doc.data();
+        if (data.message) {
+          const status = data.status || 'normal';
+          let iconHtml = '';
+          let alertClass = '';
+
+          if (status === 'normal') {
+            iconHtml = '<i class="bi bi-check-circle-fill announcement-icon text-success"></i>';
+            alertClass = 'alert-success';
+          } else if (status === 'no_class') {
+            iconHtml = '<i class="bi bi-x-circle-fill announcement-icon text-danger"></i>';
+            alertClass = 'alert-danger';
+          } else if (status === 'warning') {
+            iconHtml = '<i class="bi bi-exclamation-triangle-fill announcement-icon text-warning"></i>';
+            alertClass = 'alert-warning';
+          }
+
+          const announcementHtml = `
+            <div class="alert ${alertClass} d-flex align-items-center mb-2" role="alert">
+              ${iconHtml}
+              <div>
+                <strong>${data.message}</strong>
+              </div>
+            </div>
+          `;
+          
+          announcementContainer.innerHTML += announcementHtml;
+        }
+      });
+      
+    } catch (e) {
+      console.error("Error loading announcements:", e);
+    }
+  }
+  loadAnnouncements();
+
+  // --- Fetch Student Info (เหมือนเดิม) ---
+  input.addEventListener("change", async () => {
+    const id = input.value.trim();
+    infoDiv.innerHTML = "";
+    msg.innerHTML = "";
+    currentStudent = null;
+    if (!id) return;
+
+    try {
+      const docRef = db.collection("students").doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        infoDiv.innerHTML = `<div class="alert alert-danger">ไม่พบข้อมูลนักเรียน: ${id}</div>`;
+        return;
+      }
+      currentStudent = doc.data();
+      infoDiv.innerHTML = `<div class="alert alert-info p-3">
+                            <strong>${currentStudent.name}</strong><br>ห้อง: ${currentStudent.class}
+                          </div>`;
+    } catch (e) {
+      infoDiv.innerHTML = `<div class="alert alert-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล</div>`;
+      console.error(e);
+    }
+  });
+
+  // --- Check-in (เหมือนเดิม) ---
+  checkinBtn.addEventListener("click", async () => {
+    const id = input.value.trim();
+    msg.innerHTML = "";
+    if (!id) {
+      msg.innerHTML = `<div class="alert alert-warning">กรุณากรอกรหัสนักเรียน</div>`;
+      return;
+    }
+    if (!currentStudent || currentStudent.studentId !== id) {
+      msg.innerHTML = `<div class="alert alert-danger">ไม่พบข้อมูลนักเรียน หรือข้อมูลไม่ตรงกัน</div>`;
+      return;
+    }
+    checkinBtn.disabled = true;
+    checkinBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+    try {
+      const s = currentStudent;
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const checkinId = `${id}_${dateStr}`;
+      const checkinRef = db.collection("checkins").doc(checkinId);
+      const docSnap = await checkinRef.get();
+      if (docSnap.exists) {
+        msg.innerHTML = `<div class="alert alert-warning">${s.name} ได้เช็กอินของวันนี้ไปแล้ว</div>`;
+        checkinBtn.disabled = false;
+        checkinBtn.innerHTML = '<i class="bi bi-check-circle"></i> ยืนยันการเช็กอิน';
+        return;
+      } 
+      await checkinRef.set({
+        studentId: id,
+        name: s.name,
+        class: s.class,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        date: dateStr
+      });
+      msg.innerHTML = `<div class="alert alert-success">${s.name} เช็กอินสำเร็จ!</div>`;
+      input.value = "";
+      infoDiv.innerHTML = "";
+      currentStudent = null;
+    } catch (e) {
+      msg.innerHTML = `<div class="alert alert-danger">เกิดข้อผิดพลาดในการบันทึกข้อมูล</div>`;
+      console.error(e);
+    }
+    checkinBtn.disabled = false;
+    checkinBtn.innerHTML = '<i class="bi bi-check-circle"></i> ยืนยันการเช็กอิน';
+  });
+  
+  // --- QR Code Scanner Logic (เหมือนเดิม) ---
+  const html5QrCode = new Html5Qrcode("qr-reader");
+  const onScanSuccess = (decodedText, decodedResult) => {
+    input.value = decodedText;
+    input.dispatchEvent(new Event('change'));
+    scannerModal.hide();
+  };
+  scanBtn.addEventListener('click', () => {
+    scannerModal.show();
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onScanSuccess,
+      (errorMessage) => {})
+    .catch((err) => { console.error("Cannot start scanner", err); });
+  });
+  document.getElementById('scannerModal').addEventListener('hidden.bs.modal', () => {
+    html5QrCode.stop().catch(err => console.error("Failed to stop scanner", err));
+  });
+  
+</script>
+
+</body>
+</html>

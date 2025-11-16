@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>Admin Dashboard - เช็กอินถึงบ้าน</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { font-family: 'Noto Sans Thai', system-ui, Arial, sans-serif; }
+    .bg-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg');
+      background-size: cover; background-position: center; filter: blur(5px); transform: scale(1.05);
+    }
+    .login-container {
+      position: relative; z-index: 2; display: flex; justify-content: center;
+      align-items: center; min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); animation: fadeIn 0.8s ease-out;
+      max-width: 450px; width: 100%;
+    }
+    body.dashboard-view { background-color: #f8f9fa; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .table-hover tbody tr:hover { background-color: #f0f6ff; }
+    .btn-sm { padding: 0.25rem 0.5rem; }
+    .card { animation: fadeIn 0.5s ease-out; }
+  </style>
+</head>
+
+<body>
+  <div id="loginBg" class="bg-overlay"></div>
+  
+  <div id="authUI" class="login-container">
+    <div class="card login-card">
+      <div class="card-body p-4 p-md-5">
+        <h2 class="text-center mb-3">🔒 Admin Login</h2>
+        <div class="mb-3">
+          <label for="email" class="form-label fw-bold">Email</label>
+          <input type="email" class="form-control form-control-lg" id="email" placeholder="admin@example.com">
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label fw-bold">Password</label>
+          <input type="password" class="form-control form-control-lg" id="password" placeholder="••••••••">
+        </div>
+        <button id="loginBtn" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
+          <i class="bi bi-box-arrow-in-right"></i> Login
+        </button>
+        <div id="loginMsg" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="appUI" style="display:none">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="#"><i class="bi bi-gear-wide-connected"></i> Admin Dashboard</a>
+        <div class="d-flex align-items-center">
+          <span id="adminEmail" class="navbar-text me-3"></span>
+          <button id="logoutBtn" class="btn btn-outline-danger">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="container-fluid p-4">
+      
+      <div class="card shadow-sm mb-4">
+        <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+          <div class="fw-bold">ตัวกรอง:</div>
+          <div>
+            <label for="datePicker" class="form-label-sm">วันที่:</label>
+            <input type="date" class="form-control" id="datePicker" />
+          </div>
+          <div>
+            <label for="filterClass" class="form-label-sm">ห้อง:</label>
+            <input type="text" class="form-control" id="filterClass" placeholder="เช่น ม.1/1" />
+          </div>
+          <button id="filterBtn" class="btn btn-primary"><i class="bi bi-search"></i> กรอง</button>
+          <button id="exportBtn" class="btn btn-success ms-auto"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</button>
+        </div>
+      </div>
+      
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h3 class="mb-0">📣 จัดการประกาศ</h3>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-3 align-items-end">
+          <div class="flex-grow-1" style="min-width: 300px;">
+            <label for="announceText" class="form-label-sm">ข้อความประกาศ:</label>
+            <input type="text" class="form-control" id="announceText" placeholder="เช่น พรุ่งนี้แต่งกายชุดพละ">
+          </div>
+          <div>
+            <label for="announceStatus" class="form-label-sm">สถานะ (Icon):</label>
+            <select class="form-select" id="announceStatus">
+              <option value="normal">✅ มีเรียน (สีเขียว)</option>
+              <option value="no_class">❌ ไม่มีเรียน (สีแดง)</option>
+              <option value="warning">⚠️ ประกาศเตือน (สีเหลือง)</option>
+            </select>
+          </div>
+          <button id="saveAnnounceBtn" class="btn btn-primary"><i class="bi bi-save"></i> บันทึกประกาศ</button>
+          <button id="clearAnnounceBtn" class="btn btn-outline-secondary">ล้างฟอร์ม</button>
+        </div>
+        <div id="announceMsg" class="card-footer"></div>
+      </div>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h3 class="mb-0">📢 ประกาศปัจจุบัน (แสดง 5 รายการล่าสุด)</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table" id="announceTable">
+              <thead class="table-light">
+                <tr>
+                  <th>สถานะ</th>
+                  <th>ข้อความ</th>
+                  <th>วันที่เพิ่ม</th>
+                  <th class="text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="announceTableBody">
+                </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h3 class="mb-0">📈 รายการเช็กอิน</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped" id="table">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>รหัส</th>
+                  <th>ชื่อ</th>
+                  <th>ห้อง</th>
+                  <th>เวลา</th>
+                  <th class="text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h3 class="mb-0">👨‍🎓 จัดการนักเรียน</h3>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <label class="form-label-sm">รหัส:</label>
+            <input type="text" class="form-control" id="stuId" placeholder="S12345" />
+          </div>
+          <div>
+            <label class="form-label-sm">ชื่อ:</label>
+            <input type="text" class="form-control" id="stuName" placeholder="ชื่อ-นามสกุล" />
+          </div>
+          <div>
+            <label class="form-label-sm">ห้อง:</label>
+            <input type="text" class="form-control" id="stuClass" placeholder="ม.1/1" />
+          </div>
+          <button id="addStuBtn" class="btn btn-primary"><i class="bi bi-person-plus"></i> เพิ่ม/แก้ไข นักเรียน</button>
+          <button id="delStuBtn" class="btn btn-outline-danger"><i class="bi bi-person-dash"></i> ลบ นักเรียน</button>
+        </div>
+        <div id="manageMsg" class="card-footer"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAx1Yguy0qBSwdqJMrILWQfXS9C3WnAtKE",
+        authDomain: "school-checkin-72e99.firebaseapp.com",
+        projectId: "school-checkin-72e99",
+        storageBucket: "school-checkin-72e99.firebasestorage.app",
+        messagingSenderId: "608270281540",
+        appId: "1:608270281540:web:312f73d73d111c43de8511",
+        measurementId: "G-2DQ7YVBQWZ"
+      };
+      
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- UI Elements ---
+    const authUI = document.getElementById('authUI');
+    const loginBg = document.getElementById('loginBg');
+    const appUI = document.getElementById('appUI');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const loginMsg = document.getElementById('loginMsg');
+    const adminEmail = document.getElementById('adminEmail');
+    const datePicker = document.getElementById('datePicker');
+    const filterClass = document.getElementById('filterClass');
+    const filterBtn = document.getElementById('filterBtn');
+    const tableBody = document.querySelector('#table tbody');
+    const exportBtn = document.getElementById('exportBtn');
+    
+    // (อัปเกรด) Elements ของประกาศ
+    const announceText = document.getElementById('announceText');
+    const announceStatus = document.getElementById('announceStatus');
+    const saveAnnounceBtn = document.getElementById('saveAnnounceBtn');
+    const clearAnnounceBtn = document.getElementById('clearAnnounceBtn');
+    const announceMsg = document.getElementById('announceMsg');
+    const announceTableBody = document.getElementById('announceTableBody');
+
+    // (เพิ่มใหม่) ตัวแปรสำหรับเก็บ ID ที่กำลังแก้ไข
+    let currentEditingAnnounceId = null;
+
+    // Default date = today
+    datePicker.value = new Date().toISOString().slice(0,10);
+
+    // --- Auth (เหมือนเดิม) ---
+    loginBtn.addEventListener('click', async () => {
+      loginMsg.innerHTML = "";
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+      const email = document.getElementById('email').value;
+      const pw = document.getElementById('password').value;
+      try { await auth.signInWithEmailAndPassword(email, pw); } catch (e) {
+        console.error(e);
+        loginMsg.innerHTML = `<div class="alert alert-danger mt-3">Login failed: ${e.message}</div>`;
+      }
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Login';
+    });
+    logoutBtn.addEventListener('click', async () => { await auth.signOut(); });
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authUI.style.display = 'none';
+        appUI.style.display = 'block';
+        loginBg.style.display = 'none';
+        document.body.classList.add('dashboard-view');
+        adminEmail.innerText = user.email;
+        loadCheckins();
+        loadAnnouncementsTable();
+      } else {
+        authUI.style.display = 'flex';
+        appUI.style.display = 'none';
+        loginBg.style.display = 'block';
+        document.body.classList.remove('dashboard-view');
+      }
+    });
+
+    // --- Check-ins Table (เหมือนเดิม) ---
+    filterBtn.addEventListener('click', loadCheckins);
+    exportBtn.addEventListener('click', exportCSV);
+    tableBody.addEventListener('click', async (e) => {
+      const deleteButton = e.target.closest('.deleteBtn');
+      if (deleteButton) {
+        const tr = deleteButton.closest('tr');
+        const docId = tr.dataset.id;
+        const studentName = tr.cells[2].innerText;
+        if (!docId) return;
+        if (confirm(`คุณต้องการลบข้อมูลเช็กอินของ ${studentName} ใช่หรือไม่?`)) {
+          try {
+            await db.collection('checkins').doc(docId).delete();
+            tr.remove(); 
+          } catch (err) { console.error("Error deleting document:", err); alert("เกิดข้อผิดพลาดในการลบข้อมูล"); }
+        }
+      }
+    });
+    async function loadCheckins() {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center"><span class="spinner-border text-primary"></span> Loading...</td></tr>';
+        const date = datePicker.value;
+        const clsFilter = filterClass.value.trim();
+        let q = db.collection('checkins').where('date','==',date).orderBy('timestamp','asc');
+        if (clsFilter) { q = q.where('class','==',clsFilter); }
+        try {
+          const snap = await q.get();
+          if (snap.empty) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">ไม่พบข้อมูลในวันที่เลือก</td></tr>';
+            return;
+          }
+          tableBody.innerHTML = '';
+          let i = 1;
+          snap.forEach(doc => {
+            const d = doc.data();
+            const t = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleTimeString() : '-';
+            const tr = document.createElement('tr');
+            tr.dataset.id = doc.id; 
+            tr.innerHTML = `<td>${i++}</td><td>${d.studentId}</td><td>${d.name}</td><td>${d.class}</td><td>${t}</td>
+                            <td class="text-center"><button class="btn btn-sm btn-outline-danger deleteBtn"><i class="bi bi-trash-fill"></i></button></td>`;
+            tableBody.appendChild(tr);
+          });
+        } catch (e) {
+          console.error(e);
+          tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">เกิดข้อผิดพลาด: ${e.message} (อาจจะต้องสร้าง Index ใน Firestore)</td></tr>`;
+        }
+      }
+    function exportCSV() {
+      let rows = [['#', 'รหัส','ชื่อ','ห้อง','เวลา']];
+      const trs = tableBody.querySelectorAll('tr');
+      if (trs.length === 0 || (trs.length === 1 && trs[0].querySelectorAll('td').length < 5)) {
+        alert("ไม่มีข้อมูลให้ Export"); return;
+      }
+      trs.forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        const row = [tds[0].innerText, tds[1].innerText, tds[2].innerText, tds[3].innerText, tds[4].innerText];
+        rows.push(row);
+      });
+      let csv = rows.map(r => r.map(cell => `"${(cell || "").replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `checkins_${datePicker.value}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // --- Manage students (เหมือนเดิม) ---
+    const addStuBtn = document.getElementById('addStuBtn');
+    const delStuBtn = document.getElementById('delStuBtn');
+    const manageMsg = document.getElementById('manageMsg');
+    addStuBtn.addEventListener('click', async () => {
+      const id = document.getElementById('stuId').value.trim();
+      const name = document.getElementById('stuName').value.trim();
+      const cls = document.getElementById('stuClass').value.trim();
+      if (!id || !name) {
+        manageMsg.innerHTML = '<span class="text-danger">กรุณากรอกรหัสและชื่อ</span>'; return;
+      }
+      try {
+        await db.collection('students').doc(id).set({ studentId: id, name: name, class: cls });
+        manageMsg.innerHTML = '<span class="text-success">บันทึกเรียบร้อย</span>';
+        document.getElementById('stuId').value = '';
+        document.getElementById('stuName').value = '';
+        document.getElementById('stuClass').value = '';
+      } catch (e) { console.error(e); manageMsg.innerHTML = '<span class="text-danger">เกิดข้อผิดพลาด</span>'; }
+    });
+    delStuBtn.addEventListener('click', async () => {
+      const id = document.getElementById('stuId').value.trim();
+      if (!id) { manageMsg.innerHTML = '<span class="text-danger">กรุณากรอกรหัส</span>'; return; }
+      if (confirm(`คุณต้องการลบนักเรียนรหัส ${id} ใช่หรือไม่?`)) {
+        try {
+          await db.collection('students').doc(id).delete();
+          manageMsg.innerHTML = '<span class="text-success">ลบเรียบร้อย</span>';
+        } catch (e) { console.error(e); manageMsg.innerHTML = '<span class="text-danger">เกิดข้อผิดพลาด</span>'; }
+      }
+    });
+
+    // --- 
+    // vvv
+    // (อัปเกรด) Manage Announcement (เพิ่มระบบ Edit)
+    // vvv
+    // ---
+    
+    // 1. ฟังก์ชัน "ล้างฟอร์ม" (Clear)
+    function clearAnnounceForm() {
+      announceText.value = '';
+      announceStatus.value = 'normal';
+      currentEditingAnnounceId = null;
+      saveAnnounceBtn.innerText = '➕ เพิ่มประกาศ';
+      saveAnnounceBtn.classList.remove('btn-success');
+      saveAnnounceBtn.classList.add('btn-primary');
+      announceMsg.innerHTML = '';
+    }
+    clearAnnounceBtn.addEventListener('click', clearAnnounceForm);
+    
+    // 2. ฟังก์ชัน "บันทึก" (Save) หรือ "อัปเดต" (Update)
+    saveAnnounceBtn.addEventListener('click', async () => {
+      const message = announceText.value;
+      const status = announceStatus.value;
+      if (!message) {
+        announceMsg.innerHTML = '<span class="text-danger">กรุณากรอกข้อความประกาศ</span>';
+        return;
+      }
+      announceMsg.innerHTML = 'กำลังบันทึก...';
+      
+      try {
+        if (currentEditingAnnounceId) {
+          // --- โหมด Update (แก้ไข) ---
+          const docRef = db.collection("announcements").doc(currentEditingAnnounceId);
+          await docRef.update({
+            message: message,
+            status: status
+          });
+          announceMsg.innerHTML = '<span class="text-success">อัปเดตประกาศเรียบร้อย!</span>';
+        } else {
+          // --- โหมด Add (เพิ่มใหม่) ---
+          await db.collection("announcements").add({
+            message: message,
+            status: status,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          announceMsg.innerHTML = '<span class="text-success">เพิ่มประกาศใหม่เรียบร้อย!</span>';
+        }
+        clearAnnounceForm(); // ล้างฟอร์ม
+        loadAnnouncementsTable(); // โหลดตารางใหม่
+      } catch (e) {
+        console.error("Error saving announcement:", e);
+        announceMsg.innerHTML = '<span class="text-danger">เกิดข้อผิดพลาดในการบันทึก</span>';
+      }
+    });
+
+    // 3. ฟังก์ชัน "โหลด" ตารางประกาศ (อัปเกรดให้มีปุ่ม Edit)
+    async function loadAnnouncementsTable() {
+      announceTableBody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
+      try {
+        const snap = await db.collection("announcements")
+                              .orderBy("timestamp", "desc")
+                              .limit(5)
+                              .get();
+        if (snap.empty) {
+          announceTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ยังไม่มีประกาศ</td></tr>';
+          return;
+        }
+        
+        announceTableBody.innerHTML = '';
+        snap.forEach(doc => {
+          const d = doc.data();
+          const t = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleDateString('th-TH') : '-';
+          
+          let icon = '';
+          if (d.status === 'normal') icon = '✅';
+          else if (d.status === 'no_class') icon = '❌';
+          else if (d.status === 'warning') icon = '⚠️';
+          
+          const tr = document.createElement('tr');
+          // (สำคัญ) เก็บข้อมูลทั้งหมดไว้ที่แถว
+          tr.dataset.id = doc.id;
+          tr.dataset.message = d.message;
+          tr.dataset.status = d.status;
+          
+          tr.innerHTML = `<td>${icon} ${d.status}</td>
+                          <td>${d.message}</td>
+                          <td>${t}</td>
+                          <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary editAnnounceBtn me-1">
+                              <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger deleteAnnounceBtn">
+                              <i class="bi bi-trash-fill"></i>
+                            </button>
+                          </td>`;
+          announceTableBody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error(e);
+        announceTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">โหลดประกาศไม่สำเร็จ</td></tr>';
+      }
+    }
+    
+    // 4. ฟังก์ชัน "ลบ" และ "แก้ไข" (Event delegation)
+    announceTableBody.addEventListener('click', async (e) => {
+      
+      // --- จัดการปุ่ม "ลบ" ---
+      const deleteButton = e.target.closest('.deleteAnnounceBtn');
+      if (deleteButton) {
+        const tr = deleteButton.closest('tr');
+        const docId = tr.dataset.id;
+        if (!docId) return;
+        if (confirm(`คุณต้องการลบประกาศนี้ใช่หรือไม่?`)) {
+          try {
+            await db.collection('announcements').doc(docId).delete();
+            tr.remove();
+          } catch (err) { console.error("Error deleting announcement:", err); alert("เกิดข้อผิดพลาดในการลบ"); }
+        }
+        return; // จบการทำงาน
+      }
+
+      // --- จัดการปุ่ม "แก้ไข" ---
+      const editButton = e.target.closest('.editAnnounceBtn');
+      if (editButton) {
+        const tr = editButton.closest('tr');
+        
+        // 1. ดึงข้อมูลจาก `dataset` ของแถว
+        currentEditingAnnounceId = tr.dataset.id;
+        announceText.value = tr.dataset.message;
+        announceStatus.value = tr.dataset.status;
+        
+        // 2. เปลี่ยนปุ่มเป็นโหมด "Update"
+        saveAnnounceBtn.innerText = '💾 อัปเดตประกาศ';
+        saveAnnounceBtn.classList.remove('btn-primary');
+        saveAnnounceBtn.classList.add('btn-success');
+        
+        // 3. แจ้งเตือนและเลื่อนขึ้น
+        announceMsg.innerHTML = `<span class="text-info">กำลังแก้ไขประกาศ: "${tr.dataset.message}"</span>`;
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // เลื่อนไปบนสุด
+      }
+    });
+
+  </script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
